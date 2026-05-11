@@ -2,9 +2,21 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var selectedTab = 0
 
     var body: some View {
+        Group {
+            if hasCompletedOnboarding {
+                mainApp
+            } else {
+                OnboardingView()
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: hasCompletedOnboarding)
+    }
+
+    private var mainApp: some View {
         TabView(selection: $selectedTab) {
             DashboardView()
                 .tabItem {
