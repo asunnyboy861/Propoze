@@ -36,9 +36,7 @@ final class PurchaseManager {
                 AppConstants.IAP.lifetime,
             ])
             products = storeProducts
-        } catch {
-            print("Failed to load products: \(error)")
-        }
+        } catch {}
     }
 
     func purchase(_ product: Product) async -> Bool {
@@ -56,9 +54,7 @@ final class PurchaseManager {
             @unknown default:
                 break
             }
-        } catch {
-            print("Purchase failed: \(error)")
-        }
+        } catch {}
         return false
     }
 
@@ -66,9 +62,7 @@ final class PurchaseManager {
         do {
             try await AppStore.sync()
             await updatePurchasedProducts()
-        } catch {
-            print("Restore failed: \(error)")
-        }
+        } catch {}
     }
 
     private func updatePurchasedProducts() async {
@@ -81,9 +75,14 @@ final class PurchaseManager {
         }
 
         purchasedProductIDs = purchasedIDs
+        let wasPro = isPro
         isPro = purchasedProductIDs.contains(AppConstants.IAP.proMonthly)
             || purchasedProductIDs.contains(AppConstants.IAP.proYearly)
             || purchasedProductIDs.contains(AppConstants.IAP.lifetime)
+
+        if isPro != wasPro {
+            UserDefaults.standard.set(isPro, forKey: "isProUser")
+        }
     }
 
     var monthlyProduct: Product? {
@@ -96,5 +95,29 @@ final class PurchaseManager {
 
     var lifetimeProduct: Product? {
         products.first { $0.id == AppConstants.IAP.lifetime }
+    }
+
+    static var isProUser: Bool {
+        UserDefaults.standard.bool(forKey: "isProUser")
+    }
+
+    static func canAddClient(currentCount: Int) -> Bool {
+        isProUser || currentCount < AppConstants.Limits.freeClientCount
+    }
+
+    static func canAddPricingRow(currentCount: Int) -> Bool {
+        isProUser || currentCount < AppConstants.Limits.freePricingRows
+    }
+
+    static func canUseTracking() -> Bool {
+        isProUser
+    }
+
+    static func canUseBranding() -> Bool {
+        isProUser
+    }
+
+    static func canUseCustomTemplates() -> Bool {
+        isProUser
     }
 }

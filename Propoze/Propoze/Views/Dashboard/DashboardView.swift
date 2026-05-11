@@ -6,6 +6,7 @@ struct DashboardView: View {
     @Query(sort: \Proposal.updatedAt, order: .reverse) private var proposals: [Proposal]
     @State private var searchText = ""
     @State private var showNewProposal = false
+    @State private var showPaywall = false
 
     private var draftCount: Int { proposals.filter { $0.status == .draft }.count }
     private var sentCount: Int { proposals.filter { $0.status == .sent }.count }
@@ -28,6 +29,10 @@ struct DashboardView: View {
                 VStack(spacing: 20) {
                     statusCards
 
+                    if !PurchaseManager.isProUser {
+                        proBanner
+                    }
+
                     recentProposals
                 }
                 .padding()
@@ -46,6 +51,9 @@ struct DashboardView: View {
             .sheet(isPresented: $showNewProposal) {
                 TemplatePickerView()
             }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(purchaseManager: PurchaseManager())
+            }
             .searchable(text: $searchText, prompt: "Search proposals")
         }
     }
@@ -57,6 +65,38 @@ struct DashboardView: View {
             StatusCardView(title: "Viewed", count: viewedCount, icon: "eye", color: AppConstants.Colors.warning)
             StatusCardView(title: "Signed", count: signedCount, icon: "checkmark.seal", color: AppConstants.Colors.secondary)
         }
+    }
+
+    private var proBanner: some View {
+        Button {
+            showPaywall = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "crown.fill")
+                    .font(.title3)
+                    .foregroundStyle(AppConstants.Colors.warning)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Unlock Pro Features")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                    Text("Tracking, branding & unlimited rows")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
     }
 
     private var recentProposals: some View {

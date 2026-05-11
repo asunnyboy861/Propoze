@@ -8,12 +8,21 @@ struct PricingTableView: View {
     @State private var newItemDescription = ""
     @State private var newItemQuantity = 1.0
     @State private var newItemPrice = 0.0
+    @State private var showPaywall = false
+
+    private var canAddMore: Bool {
+        PurchaseManager.canAddPricingRow(currentCount: proposal.pricingItems.count)
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 existingItemsSection
-                addItemSection
+                if canAddMore {
+                    addItemSection
+                } else {
+                    limitSection
+                }
                 totalSection
             }
             .navigationTitle("Pricing Table")
@@ -22,6 +31,9 @@ struct PricingTableView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(purchaseManager: PurchaseManager())
             }
         }
     }
@@ -47,9 +59,9 @@ struct PricingTableView: View {
                     }
                 }
                 .onDelete { offsets in
-                    for index in offsets {
-                        proposal.pricingItems.remove(at: index)
-                    }
+                    var items = proposal.pricingItems
+                    items.remove(atOffsets: offsets)
+                    proposal.pricingItems = items
                 }
             }
         }
@@ -79,6 +91,24 @@ struct PricingTableView: View {
         }
     }
 
+    private var limitSection: some View {
+        Section {
+            VStack(spacing: 8) {
+                Text("Free plan limited to \(AppConstants.Limits.freePricingRows) pricing rows")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Button("Upgrade to Pro") {
+                    showPaywall = true
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppConstants.Colors.primary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
+        }
+    }
+
     private var totalSection: some View {
         Section {
             HStack {
@@ -99,7 +129,9 @@ struct PricingTableView: View {
             quantity: newItemQuantity,
             unitPrice: newItemPrice
         )
-        proposal.pricingItems.append(item)
+        var items = proposal.pricingItems
+        items.append(item)
+        proposal.pricingItems = items
 
         newItemName = ""
         newItemDescription = ""

@@ -6,6 +6,7 @@ struct ClientsView: View {
     @Query(sort: \Client.name) private var clients: [Client]
     @State private var searchText = ""
     @State private var showAddClient = false
+    @State private var showPaywall = false
 
     private var filteredClients: [Client] {
         if searchText.isEmpty { return clients }
@@ -32,14 +33,26 @@ struct ClientsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        showAddClient = true
+                        if PurchaseManager.canAddClient(currentCount: clients.count) {
+                            showAddClient = true
+                        } else {
+                            showPaywall = true
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
                 }
             }
+            .overlay {
+                if clients.isEmpty {
+                    emptyState
+                }
+            }
             .sheet(isPresented: $showAddClient) {
                 AddClientView()
+            }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView(purchaseManager: PurchaseManager())
             }
             .searchable(text: $searchText, prompt: "Search clients")
         }
@@ -68,6 +81,20 @@ struct ClientsView: View {
         .padding(.vertical, 4)
     }
 
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "person.2")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+            Text("No clients yet")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            Text("Tap + to add your first client")
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
     private func deleteClients(at offsets: IndexSet) {
         for index in offsets {
             modelContext.delete(filteredClients[index])
@@ -77,17 +104,35 @@ struct ClientsView: View {
 
 struct ClientDetailView: View {
     @Bindable var client: Client
+    @State private var isEditing = false
 
     var body: some View {
         List {
             Section("Info") {
-                LabeledContent("Name", value: client.name)
-                LabeledContent("Email", value: client.email)
-                LabeledContent("Company", value: client.company)
-                LabeledContent("Phone", value: client.phone)
+                if isEditing {
+                    TextField("Name", text: $client.name)
+                    TextField("Email", text: $client.email)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                    TextField("Company", text: $client.company)
+                    TextField("Phone", text: $client.phone)
+                        .keyboardType(.phonePad)
+                } else {
+                    LabeledContent("Name", value: client.name)
+                    LabeledContent("Email", value: client.email)
+                    LabeledContent("Company", value: client.company)
+                    LabeledContent("Phone", value: client.phone.isEmpty ? "—" : client.phone)
+                }
             }
         }
         .navigationTitle(client.name)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(isEditing ? "Done" : "Edit") {
+                    isEditing.toggle()
+                }
+            }
+        }
     }
 }
 
@@ -102,13 +147,15 @@ struct AddClientView: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Email", text: $email)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                TextField("Company", text: $company)
-                TextField("Phone", text: $phone)
-                    .keyboardType(.phonePad)
+                Section {
+                    TextField("Name", text: $name)
+                    TextField("Email", text: $email)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                    TextField("Company", text: $company)
+                    TextField("Phone", text: $phone)
+                        .keyboardType(.phonePad)
+                }
             }
             .navigationTitle("New Client")
             .navigationBarTitleDisplayMode(.inline)
@@ -121,6 +168,7 @@ struct AddClientView: View {
                         saveClient()
                     }
                     .disabled(name.isEmpty)
+                    .fontWeight(.semibold)
                 }
             }
         }

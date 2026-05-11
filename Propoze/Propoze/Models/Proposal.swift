@@ -50,8 +50,17 @@ final class Proposal {
     var signatureImage: Data?
     var templateId: UUID?
     var isPro: Bool
+    var pricingItemsData: Data?
 
-    var pricingItems: [PricingItem]
+    var pricingItems: [PricingItem] {
+        get {
+            guard let data = pricingItemsData else { return [] }
+            return (try? JSONDecoder().decode([PricingItem].self, from: data)) ?? []
+        }
+        set {
+            pricingItemsData = try? JSONEncoder().encode(newValue)
+        }
+    }
 
     var status: ProposalStatus {
         get { ProposalStatus(rawValue: statusRaw) ?? .draft }
@@ -97,6 +106,6 @@ final class Proposal {
         self.signatureImage = signatureImage
         self.templateId = templateId
         self.isPro = isPro
-        self.pricingItems = pricingItems
+        self.pricingItemsData = try? JSONEncoder().encode(pricingItems)
     }
 }

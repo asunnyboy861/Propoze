@@ -1,7 +1,11 @@
 import SwiftUI
+import MessageUI
 
 struct ProposalTrackingView: View {
     let proposal: Proposal
+    @State private var showMailCompose = false
+    @State private var showMailAlert = false
+    @State private var mailAlertMessage = ""
 
     var body: some View {
         ScrollView {
@@ -15,6 +19,21 @@ struct ProposalTrackingView: View {
         }
         .navigationTitle("Tracking")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showMailCompose) {
+            if MFMailComposeViewController.canSendMail() {
+                MailComposeView(
+                    to: proposal.clientEmail,
+                    subject: "Following up: \(proposal.title)",
+                    body: followUpEmailBody,
+                    onDismiss: { _ in }
+                )
+            }
+        }
+        .alert("Mail Not Available", isPresented: $showMailAlert) {
+            Button("OK") {}
+        } message: {
+            Text(mailAlertMessage)
+        }
     }
 
     private var headerSection: some View {
@@ -56,6 +75,16 @@ struct ProposalTrackingView: View {
 
             if let signedAt = proposal.signedAt {
                 timelineItem(icon: "checkmark.seal", title: "Signed", date: signedAt, color: AppConstants.Colors.secondary)
+            }
+
+            if proposal.sentAt == nil && proposal.signedAt == nil {
+                HStack {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(.secondary)
+                    Text("No activity yet. Mark the proposal as sent to start tracking.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding()
@@ -107,12 +136,44 @@ struct ProposalTrackingView: View {
                 Text("Proposal sent but not yet viewed. Consider following up in 2-3 days.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+
+                Button {
+                    sendFollowUp()
+                } label: {
+                    HStack {
+                        Image(systemName: "envelope")
+                        Text("Send Follow-Up Email")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppConstants.Colors.primary)
+                    .foregroundStyle(.white)
+                    .cornerRadius(10)
+                }
             } else if proposal.status == .signed {
                 Text("Proposal signed! Congratulations!")
                     .font(.subheadline)
                     .foregroundStyle(AppConstants.Colors.secondary)
+            } else if proposal.status == .declined {
+                Text("The client declined this proposal. Consider reaching out to discuss alternatives.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    sendFollowUp()
+                } label: {
+                    HStack {
+                        Image(systemName: "envelope")
+                        Text("Reach Out")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(AppConstants.Colors.primary)
+                    .foregroundStyle(.white)
+                    .cornerRadius(10)
+                }
             } else {
-                Text("No tracking data available yet.")
+                Text("Mark your proposal as sent to start tracking and follow up with the client.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -122,5 +183,26 @@ struct ProposalTrackingView: View {
         .cornerRadius(12)
     }
 
-    private func sendFollowUp() {}
+    private var followUpEmailBody: String {
+        """
+        Hi \(proposal.clientName),
+
+        I wanted to follow up on the proposal I sent for "\(proposal.title)". 
+
+        Please let me know if you have any questions or if there's anything you'd like to discuss. I'm happy to schedule a call at your convenience.
+
+        Looking forward to hearing from you!
+
+        Best regards
+        """
+    }
+
+    private func sendFollowUp() {
+        if MFMailComposeViewController.canSendMail() {
+            showMailCompose = true
+        } else {
+            mailAlertMessage = "Please set up a Mail account on your device to send follow-up emails."
+            showMailAlert = true
+        }
+    }
 }

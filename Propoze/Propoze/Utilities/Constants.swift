@@ -37,6 +37,7 @@ enum AppConstants {
         static let support = "https://asunnyboy861.github.io/Propoze/support.html"
         static let privacy = "https://asunnyboy861.github.io/Propoze/privacy.html"
         static let terms = "https://asunnyboy861.github.io/Propoze/terms.html"
+        static let feedbackBackend = "https://feedback-board.iocompile67692.workers.dev"
     }
 }
 
